@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🧠 Challenges Faced & Solutions Implemented
 
-## Getting Started
+While building the **Smart Bookmark App using Supabase Realtime**, I encountered an issue where the UI was not updating instantly after adding or deleting a bookmark.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## ❌ Problem Faced
+
+After implementing the **Add** and **Delete** bookmark functionality:
+
+* Bookmark was successfully added to the database
+* Bookmark was successfully deleted from the database
+* But the UI was **not updating in real-time**
+* I had to manually **refresh the page** to see the updated data
+
+Even though Supabase Realtime was enabled, the frontend was not receiving the DELETE event.
+
+---
+
+## 🔍 Root Cause
+
+By default, PostgreSQL only sends the **primary key (id)** of the deleted row through its replication stream.
+
+But in my application:
+
+* I was filtering bookmarks using `user_id`
+* Supabase Realtime needs full row data to match the logged-in user
+* Since only `id` was being sent, Supabase could not verify which user deleted the bookmark
+* As a result, the Realtime event was **not triggered on the frontend**
+
+---
+
+## ✅ Solution Implemented
+
+To fix this, I updated the replication identity of the `bookmarks` table by running the following SQL query in Supabase:
+
+```sql
+ALTER TABLE bookmarks REPLICA IDENTITY FULL;
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+This ensures that:
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+* PostgreSQL sends the **complete deleted row data**
+* Supabase Realtime can filter changes based on `user_id`
+* Realtime DELETE events are correctly received by the frontend
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🚀 Result
 
-To learn more about Next.js, take a look at the following resources:
+After applying this fix:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+* Add and Delete operations started working instantly
+* UI updates automatically without page refresh
+* Realtime functionality works as expected
+* No need for manual state updates in React
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The UI now re-renders automatically whenever a change is detected in the database through Supabase Realtime.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This challenge helped me understand how PostgreSQL replication and Supabase Realtime work together for real-time UI updates.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
